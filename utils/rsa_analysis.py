@@ -16,27 +16,24 @@ from scipy.stats import rankdata
 from statsmodels.stats.multitest import multipletests
 
 
+
+
 # ---------------------------------------------------------------------
 # Low-level helpers
 # ---------------------------------------------------------------------
 def get_upper_indices(batch_size: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Return JAX arrays of the upper-triangular indices for a square matrix."""
     i_up, j_up = np.triu_indices(batch_size, k=1)
-    return jnp.array(i_up, dtype=jnp.int32), jnp.array(j_up, dtype=jnp.int32)
+    return tuple(i_up.tolist()), tuple(j_up.tolist())   # ← hash‑able!
 
 
 @partial(jit, static_argnames=("i_upper", "j_upper"))
-def pairwise_euclidean_distance(
-    X: jnp.ndarray,
-    *,
-    i_upper: jnp.ndarray,
-    j_upper: jnp.ndarray,
-) -> jnp.ndarray:
-    """Condensed Euclidean distances for a batch (JIT-compiled)."""
+def pairwise_euclidean_distance(X, *, i_upper, j_upper):
+    i_upper = jnp.array(i_upper)        #   <-- re‑create device arrays once
+    j_upper = jnp.array(j_upper)
     diff = X[:, None, :] - X[None, :, :]
     sq_dist = jnp.sum(diff ** 2, axis=-1)
     return sq_dist[i_upper, j_upper]
-
 
 @jit
 def pearson_correlation(matrix: jnp.ndarray) -> jnp.ndarray:
