@@ -226,3 +226,27 @@ def compute_average_correlation_and_surrogates(
     sig_mask = reject.reshape(n_time, n_time)
 
     return mean_corr, sig_mask, surrogates
+
+
+@jit
+def spearman_corr_ranked(x_ranked: jnp.ndarray,
+                         y_ranked: jnp.ndarray) -> jnp.ndarray:
+    """
+    Spearman correlation between two *already rank-transformed* 1-D arrays.
+    Returns a scalar.
+    """
+    x_mean = jnp.mean(x_ranked)
+    y_mean = jnp.mean(y_ranked)
+    num = jnp.sum((x_ranked - x_mean) * (y_ranked - y_mean))
+    den = jnp.sqrt(jnp.sum((x_ranked - x_mean) ** 2)
+                   * jnp.sum((y_ranked - y_mean) ** 2))
+    return num / den
+
+
+def make_pairwise_euclid(batch_size: int):
+    """
+    returns a JIT-compiled condensed Euclidean
+    distance function specialised to *batch_size*.
+    """
+    i_up, j_up = get_upper_indices(batch_size)
+    return partial(pairwise_euclidean_distance, i_upper=i_up, j_upper=j_up)
