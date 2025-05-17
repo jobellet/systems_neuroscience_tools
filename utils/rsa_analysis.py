@@ -36,11 +36,9 @@ def pairwise_euclidean_distance(X, *, i_upper, j_upper):
     return sq_dist[i_upper, j_upper]
 
 @jit
-def pearson_correlation(matrix: jnp.ndarray) -> jnp.ndarray:
-    """Return the full Pearson correlation matrix (JAX, float32)."""
-    matrix = matrix.astype(jnp.float32)
-    centered = matrix - jnp.mean(matrix, axis=0)           # (n, p)
-    cov = (centered.T @ centered) / (matrix.shape[0] - 1)  # (p, p)
+def pearson_correlation(matrix):
+    centered = matrix - jnp.mean(matrix, axis=0)
+    cov = (centered.T @ centered) / (matrix.shape[0] - 1)
     std = jnp.sqrt(jnp.diag(cov))
     return cov / jnp.outer(std, std)
 
