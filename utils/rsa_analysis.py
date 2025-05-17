@@ -39,11 +39,10 @@ def pairwise_euclidean_distance(X, *, i_upper, j_upper):
 def pearson_correlation(matrix: jnp.ndarray) -> jnp.ndarray:
     """Return the full Pearson correlation matrix (JAX, float32)."""
     matrix = matrix.astype(jnp.float32)
-    centered = matrix - jnp.mean(matrix, axis=0)
-    cov = jnp.einsum("ij,ij->jj", centered, centered) / (matrix.shape[0] - 1)
+    centered = matrix - jnp.mean(matrix, axis=0)           # (n, p)
+    cov = (centered.T @ centered) / (matrix.shape[0] - 1)  # (p, p)
     std = jnp.sqrt(jnp.diag(cov))
     return cov / jnp.outer(std, std)
-
 
 def rank_data(data: np.ndarray) -> np.ndarray:
     """Rank-transform along axis 0 (scipy’s `rankdata`, but 2-D safe)."""
