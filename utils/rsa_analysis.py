@@ -250,3 +250,8 @@ def make_pairwise_euclid(batch_size: int):
     """
     i_up, j_up = get_upper_indices(batch_size)
     return partial(pairwise_euclidean_distance, i_upper=i_up, j_upper=j_up)
+
+
+@jit
+def partial_corr(r12, r13, r23):
+    return (r12 - r13*r23) / jnp.sqrt((1 - r13**2)*(1 - r23**2))
