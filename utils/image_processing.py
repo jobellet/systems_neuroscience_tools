@@ -18,48 +18,40 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-def m_pathway_filter_gaussian(image, cutoff_cpd=0.5, fov_deg=8.0):
+def m_pathway_filter_gaussian(image,
+                              cutoff_cpd     = 0.5,   # desired cut-off in cycles/degree
+                              fov_deg        = 8.0,   # image spans this many degrees
+                              atten_dB_at_cut = -20):  # attenuation (dB) at cutoff
     """
-    Simulate a magnocellular-only response using a Gaussian low-pass filter.
-    
-    Parameters
-    ----------
-    image : ndarray
-        Grayscale image.
-    cutoff_cpd : float
-        Cutoff frequency in cycles per degree.
-    fov_deg : float
-        Field of view in degrees.
-        
-    Returns
-    -------
-    image_filtered : ndarray
-        The filtered image (real part of the inverse FFT).
+    Gaussian low-pass that is attenuated by `atten_dB_at_cut`
     """
+    # 1) convert to cycles per image width
     cutoff_cycles = cutoff_cpd * fov_deg
-    sigma = cutoff_cycles / 1.177
 
-    # Compute the 2D FFT and shift zero frequency component to center.
+    # 2) linear gain at cutoff
+    gain = 10**(atten_dB_at_cut / 20)
+
+    # 3) solve σ so that exp(–(cutoff_cycles)^2/(2σ^2)) == gain
+    sigma = cutoff_cycles / np.sqrt(-2 * np.log(gain))
+
+    # 4) forward FFT (no fftshift)
     F = np.fft.fft2(image)
-    Fshift = np.fft.fftshift(F)
 
-    # Create frequency coordinate arrays.
+    # 5) build frequency grid (in cycles per image)
     rows, cols = image.shape
-    crow, ccol = rows // 2, cols // 2
-    u = np.arange(-crow, crow)
-    v = np.arange(-ccol, ccol)
-    U, V = np.meshgrid(v, u)
+    row_freqs = np.fft.fftfreq(rows) * rows
+    col_freqs = np.fft.fftfreq(cols) * cols
+    U, V = np.meshgrid(col_freqs, row_freqs)
     D = np.sqrt(U**2 + V**2)
 
-    # Create Gaussian low-pass filter.
+    # 6) isotropic Gaussian low-pass
     H = np.exp(-(D**2) / (2 * sigma**2))
 
-    # Apply filter in frequency domain and compute inverse FFT.
-    Fshift_filtered = Fshift * H
-    F_ishift = np.fft.ifftshift(Fshift_filtered)
-    image_filtered = np.fft.ifft2(F_ishift)
+    # 7) apply filter and inverse FFT
+    Filt = F * H
+    image_filtered = np.fft.ifft2(Filt).real
 
-    return np.real(image_filtered)
+    return image_filtered
 
 def radial_average_vectorized(magnitude_spectrum, visual_angle=10):
     """
