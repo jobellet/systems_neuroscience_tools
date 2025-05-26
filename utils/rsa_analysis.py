@@ -251,6 +251,13 @@ def make_pairwise_euclid(batch_size: int):
     i_up, j_up = get_upper_indices(batch_size)
     return partial(pairwise_euclidean_distance, i_upper=i_up, j_upper=j_up)
 
+@jit
+def pairwise_cosine_distances(X: jnp.ndarray) -> jnp.ndarray:
+    """Condensed pairwise cosine distance using JAX (not used here)."""
+    X_norm = X / jnp.linalg.norm(X, axis=1, keepdims=True)
+    sim = jnp.dot(X_norm, X_norm.T)
+    dist_matrix = 1.0 - sim
+    return dist_matrix[jnp.triu_indices(X.shape[0], k=1)]
 
 @jit
 def partial_corr(r12, r13, r23):
