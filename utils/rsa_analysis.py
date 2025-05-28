@@ -262,3 +262,54 @@ def pairwise_cosine_distances(X: jnp.ndarray) -> jnp.ndarray:
 @jit
 def partial_corr(r12, r13, r23):
     return (r12 - r13*r23) / jnp.sqrt((1 - r13**2)*(1 - r23**2))
+
+
+
+def rank_jaccard_rdm(arr: np.ndarray) -> np.ndarray:
+    """
+    Replace 0/1 entries of one-or-more flattened Jaccard RDM vectors by their
+    **average ranks**, matching what `scipy.stats.rankdata(method='average')`
+    would do.
+
+    Parameters
+    ----------
+    arr : ndarray
+        * 1-D shape (N,)  – a single flattened RDM vector, **or**
+        * 2-D shape (N, M) – each column is a separate flattened RDM vector.
+
+    Returns
+    -------
+    ndarray
+        Rank-transformed array with the **same shape** as `arr`
+        (float dtype). If the input is 1-D the output is 1-D;
+        if 2-D, the output matches that 2-D shape.
+
+    Notes
+    -----
+    * All 0s in a column share the rank  `(n0 + 1)/2`
+    * All 1s in a column share the rank  `(n0 + 1 + N)/2`
+      where `n0` is the number of zeros and `N` is the column length.
+    * If a column contains **only zeros** or **only ones** the entire
+      column is one big tie, so every element gets the average rank
+      `(N + 1)/2`, exactly as Spearman ρ expects.
+    """
+    x = np.asarray(arr)
+    if x.ndim == 1:                       # promote to 2-D for uniform code
+        x = x[:, None]
+
+    N, M = x.shape
+    out = np.empty_like(x, dtype=float)
+
+    for j in range(M):
+        col = x[:, j]
+        n0 = np.count_nonzero(col == 0)
+
+        if n0 == 0 or n0 == N:            # degenerate all-tie case
+            out[:, j] = (N + 1) / 2.0
+        else:
+            r0 = (n0 + 1) / 2.0
+            r1 = (n0 + 1 + N) / 2.0
+            out[:, j] = np.where(col == 0, r0, r1)
+
+    return out.squeeze()                  # drop singleton dim if input was 1-D
+
